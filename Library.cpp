@@ -1,9 +1,25 @@
-export module Library;
+#include "Library.h"
 
-import std;
+class BorrowRcd { //借阅记录
+	//每个记录为一次借书，每次只能借一本书
+public:
+	BorrowRcd(int id) :rid(id) {
+		deadline = std::chrono::system_clock::now() + std::chrono::days(30); //借书期限为30天
+	}
+	void show() const {
+		std::time_t time = std::chrono::system_clock::to_time_t(deadline); 
+		std::println("图书证号：{} ，应归还时间：{}", rid ,time); //直接打印时间戳
+	}
+	bool isExpired() const { //是否过期
+		return deadline < std::chrono::system_clock::now();
+	}
+	int getRid() const { return rid; }
+private:
+	int rid;             // 图书证号
+	std::chrono::system_clock::time_point deadline; //应归还时间,根据当前时间计算出来
+};
 
-export class BorrowRcd;
-export class Book {
+class Book {
 public:
 	Book() = default;
 	Book(int bid, std::string title, std::string author, int mount)
@@ -81,22 +97,7 @@ public:
 };
 
 //用std::tuple代替会更好吗?不，因为std::tuple计算借书期限比较麻烦
-class BorrowRcd { //借阅记录
-	//每个记录为一次借书，每次只能借一本书
-public:
-	BorrowRcd(int id) :rid(id) {
-		deadline = std::chrono::year_month_day(std::chrono::system_clock::now() + std::chrono::days(30)); //借书期限为30天
-	}
-	void show() const {
-		std::cout << "借书证号：" << rid << " 应归还时间：" << deadline << std::endl;
-	}
-	bool expired() const { //是否过期
-		return deadline < std::chrono::year_month_day(std::chrono::system_clock::now());
-	}
-private:
-	int rid;             // 图书证号
-	std::chrono::year_month_day deadline; //应归还时间,根据当前时间计算出来
-};
+
 
 struct BTreeNode {  //2-3树的节点
 	std::vector<Book> books; //书
