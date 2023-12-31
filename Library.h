@@ -10,4 +10,5 @@
 class BorrowRcd;
 class Library;
 class Book;
+struct BTreeNode;
 
