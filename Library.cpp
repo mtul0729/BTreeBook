@@ -268,8 +268,8 @@ class Library {  // Singleton 单例模式
     do {
       auto const parent = ErrorNode->parent.lock();  // 获取父节点
       if (parent ==
-          nullptr) {  // 根节点，且根节点已经没有书了，说明整棵树已经没有书了
-        root = nullptr;
+          nullptr) {  // 根节点，且根节点已经没有书了
+        //调整根结点
       } else {  // 非根节点,找到兄弟节点
         auto merge = [parent](INDEX_SIZE index) {
           parent->children[index]->books.insert(
@@ -282,75 +282,50 @@ class Library {  // Singleton 单例模式
               parent->children[index + 1]->children.end());
         };
         // TODO:把局部调整封装成函数
-        auto MergeTO = [parent](INDEX_SIZE base, INDEX_SIZE inc) {
-            //1.直接借
-            //2.重父节点借，需要merge
+        auto Adjust = [parent, merge](INDEX_SIZE to, INDEX_SIZE from) {
+          bool toLeft = to < from;
+          INDEX_SIZE PBookPos =
+              toLeft ? to : from;  // 父节点中需要被借用的书的index
+          parent->children[to]->books.push_back(parent->books[PBookPos]);
+          // 1.直接借
+          if (parent->children[from]->books.size() == 2) {
+            INDEX_SIZE upside = toLeft ? 0 : 1;  // 将被上移的book的位置
+            parent->books[PBookPos] = parent->children[from]->books[upside];
+            parent->children[from]->books.erase(
+                parent->children[from]->books.begin() + upside);
+            // 移交子树
+            if (toLeft) {
+              parent->children[to]->children.insert(
+                  parent->children[to]->children.end(),
+                  parent->children[from]->children.front());
+              parent->children[from]->children.erase(
+                  parent->children[from]->children.begin());
+            } else {
+              parent->children[to]->children.insert(
+                  parent->children[to]->children.begin(),
+                  parent->children[from]->children.back());
+              parent->children[from]->children.erase(
+                  parent->children[from]->children.end());
+            }
+          }
+          // 2.父节点借，需要merge
+          parent->books.erase(parent->books.begin() + PBookPos);
+          merge(PBookPos);  // 始终向左合并，以保证关键字升序
+          parent->children.erase(parent->children.begin() + PBookPos + 1);
         };
         switch (index) {
           case (0):
-
-            BorrowNode->books.push_back(parent->books[0]);
-            if (parent->children[1]->books.size() ==
-                2) {  // 兄弟节点有2本书，直接借书
-
-              parent->books[0] = parent->children[1]->books[0];
-              parent->children[1]->books.erase(
-                  parent->children[1]->books.begin());
-
-              // 移交子树
-              BorrowNode->children.push_back(parent->children[0]);
-              parent->children.erase(parent->children.begin());
-            } else {  // 兄弟节点有1本书，需要从双亲节点借书
-              parent->books.erase(parent->books.begin());
-
-              // 合并
-              merge(0);
-              parent->children.erase(parent->children.begin() + 1);
-            }
-            break;
-          case (2):
-            BorrowNode->books.push_back(parent->books.back());
-            if (parent->children[1]->books.size() ==
-                2) {  // 兄弟节点有2本书，直接借书
-              parent->books[0] = parent->children[1]->books[1];
-              parent->children[1]->books.erase(
-                  parent->children[1]->books.end());
-
-              // 移交子树
-              BorrowNode->children.insert(BorrowNode->children.begin(),
-                                          parent->children[1]->children.back());
-              parent->children[1]->children.pop_back();
-            } else {
-              parent->books.pop_back();
-
-              // 合并
-              merge(1);
-              parent->children.pop_back();
-            }
+            Adjust(0, 1);
             break;
           case (1):
-            if (parent->children[0]->books.size() ==
-                2) {  // 左兄弟节点有2本书，直接借书
-              BorrowNode->books.insert(BorrowNode->books.begin(),
-                                       parent->books[0]);
-
-              parent->books[0] = parent->children[0]->books[1];
-              parent->children[0]->books.pop_back();
-
-              // 移交子树
-
-            } else if (parent->books.size() == 2 &&
-                       parent->children[2]->books.size() ==
-                           2) {  // 右兄弟节点有2本书，直接借书
-              BorrowNode->books.push_back(parent->books[2]);
-              parent->books[1] = parent->children[1]->books[0];
-              parent->children[1]->books.erase(
-                  parent->children[1]->books.begin());
-
-              // 移交子树
-              BorrowNode->children.push_back(parent->children[0]);
-              parent->children.erase(parent->children.begin());
-            }
+            if (parent->children.size() == 3 &&
+                parent->children[2]->books.size() == 2)
+              Adjust(1, 2);
+            else {
+              Adjust(1, 0);
+            }break;
+          case (2):
+            Adjust(2, 1);
         }
       }
       BorrowNode = parent;  // 继续向上检查
