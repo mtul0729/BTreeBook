@@ -81,7 +81,8 @@ result Library::find(int bid) const {  // 查找书
           return result(curr, i, true);  // 找到
         } else if (
             curr->books[i] >
-            bid) {  // 只要找到比bid大的书，就可以确定bid不在这个节点，而且只可能在curr->children[i]中
+            bid) {  // 只要找到比bid大的书，就可以确定bid不
+            //在这个节点，而且只可能在curr->children[i]中
           parent = curr;
           curr = curr->children[i];
           flag = true;
@@ -150,15 +151,18 @@ void Library::Display() {
     for (int i = 0; i < node->books.size(); i++) {
       std::cout << node->books[i].getBid() << ",";
     }
+    // DEBUGING
+    auto parent = node->parent.lock();
+    if (parent != nullptr) {
+        std::cout<<"\tParent:";
+      for (int i = 0; i < parent->books.size(); i++) {
+        std::cout << parent->books[i].getBid() << ",";
+      }
+    }
+
     std::cout << std::endl;
   };
   traverse(root, printNode, 0);
-}
-bool Library::DeleteBook(const int bid) {
-  result r = find(bid);
-  if (!r.tag) return false;  // 没找到
-  DeleteBTree(r.node, r.index);
-  return true;
 }
 bool Library::Borrow(int bid, int rid) {  // 这里返回类型可以为void
   result r = find(bid);
@@ -169,13 +173,20 @@ bool Library::Borrow(int bid, int rid) {  // 这里返回类型可以为void
   if (r.node->books[r.index].borrowBook(rid)) return true;
   return false;
 }
+
+bool Library::DeleteBook(const int bid) {
+  result r = find(bid);
+  if (!r.tag) return false;  // 没找到
+  DeleteBTree(r.node, r.index);
+  return true;
+}
+
 void Library::DeleteBTree(std::shared_ptr<BTreeNode> node,
                           const INDEX_SIZE& index) {
-  if (node->children.empty()) {
-    node->books.erase(node->books.begin() + index);            // 删除书
-    node->children.erase(node->children.begin() + index + 1);  // 删除孩子
-    if (node->books.empty())
-      DisLess(node, index);  // 调整B树的结构，使其满足B树的定义
+  if (node->children[0] == nullptr) {
+    node->books.erase(node->books.begin() + index);  // 删除书
+    node->children.pop_back();  // 最下层节点的children都为空，删除任意一个
+    if (node->books.empty()) DisLess(node);  // 调整B树的结构，使其满足B树的定义
   } else {
     Successor(node, index + 1);
     DeleteBTree(node, 0);
@@ -184,7 +195,7 @@ void Library::DeleteBTree(std::shared_ptr<BTreeNode> node,
 void Library::Successor(std::shared_ptr<BTreeNode>& node,
                         const INDEX_SIZE& index) {
   node = node->children[index + 1];
-  if (!node->children.empty()) Successor(node, 1);
+  if (node->children[0] != nullptr) Successor(node, 1);
 }
 void Library::DisMore(
     std::shared_ptr<BTreeNode> ErrorNode) {  // 调整B树的结构，使其满足B树的定义
@@ -206,8 +217,9 @@ void Library::DisMore(
   // 上移中间，需要获取父节点指针
   auto parent = ErrorNode->parent.lock();
 
-  if (parent == nullptr) {                                          // 根节点
-    parent = std::make_shared<BTreeNode>(ErrorNode->books.back());  // 构造根节点
+  if (parent == nullptr) {  // 根节点
+    parent =
+        std::make_shared<BTreeNode>(ErrorNode->books.back());  // 构造根节点
     ErrorNode->books.pop_back();  // 删除最后一个书
 
     parent->children[0] = ErrorNode;
@@ -217,7 +229,7 @@ void Library::DisMore(
     root = parent;
 
   } else {               // 非根节点
-    INDEX_SIZE pos = 0;  // OverweightNode在父节点中的位置
+    INDEX_SIZE pos = 0;  // ErrorNode在父节点中的位置
     for (; pos < parent->children.size(); pos++) {
       if (parent->children[pos] == ErrorNode) break;
     }
@@ -233,72 +245,70 @@ void Library::DisMore(
   if (parent->books.size() == 3) DisMore(parent);
 }
 void Library::DisLess(
-    std::shared_ptr<BTreeNode> ErrorNode,
-    const INDEX_SIZE& index) {  // 调整B树的结构，使其满足B树的定义
-  std::shared_ptr<BTreeNode> BorrowNode(ErrorNode);  // 需要借书的节点
-  do {
-    auto const parent = ErrorNode->parent.lock();  // 获取父节点
-    if (parent == nullptr) {  // 根节点已经没有书了
-      root = BorrowNode;
-    } else {  // 非根节点,找到兄弟节点
-      auto merge = [parent](INDEX_SIZE index) {
-        parent->children[index]->books.insert(
-            parent->children[index]->books.begin(),
-            parent->children[index + 1]->books.begin(),
-            parent->children[index + 1]->books.end());
-        parent->children[index]->children.insert(
-            parent->children[index]->children.begin(),
-            parent->children[index + 1]->children.begin(),
-            parent->children[index + 1]->children.end());
-      };
-      // 局部调整
-      auto Adjust = [parent, merge](INDEX_SIZE to, INDEX_SIZE from) {
-        bool toLeft = to < from;
-        INDEX_SIZE PBookPos =
-            toLeft ? to : from;  // 父节点中需要被借用的书的index
-        parent->children[to]->books.push_back(parent->books[PBookPos]);
-        // 1.直接借
-        if (parent->children[from]->books.size() == 2) {
-          INDEX_SIZE upside = toLeft ? 0 : 1;  // 将被上移的book的位置
-          parent->books[PBookPos] = parent->children[from]->books[upside];
-          parent->children[from]->books.erase(
-              parent->children[from]->books.begin() + upside);
-          // 移交子树
-          if (toLeft) {
-            parent->children[to]->children.insert(
-                parent->children[to]->children.end(),
-                parent->children[from]->children.front());
-            parent->children[from]->children.erase(
-                parent->children[from]->children.begin());
-          } else {
-            parent->children[to]->children.insert(
-                parent->children[to]->children.begin(),
-                parent->children[from]->children.back());
-            parent->children[from]->children.erase(
-                parent->children[from]->children.end());
-          }
+    std::shared_ptr<BTreeNode> ErrorNode) {  // 调整B树的结构，使其满足B树的定义
+  auto const parent = ErrorNode->parent.lock();
+  INDEX_SIZE pos = 0;  // ErrorNode在父节点中的位置
+  for (; pos < parent->children.size(); pos++) {
+    if (parent->children[pos] == ErrorNode) break;
+  }
+  if (parent == nullptr) {  // 根节点已经没有书了
+    root = ErrorNode;
+  } else {  // 非根节点,找到兄弟节点
+    auto merge = [parent](INDEX_SIZE index) {
+      parent->children[index]->books.insert(
+          parent->children[index]->books.begin(),
+          parent->children[index + 1]->books.begin(),
+          parent->children[index + 1]->books.end());
+      parent->children[index]->children.insert(
+          parent->children[index]->children.begin(),
+          parent->children[index + 1]->children.begin(),
+          parent->children[index + 1]->children.end());
+    };
+    // 局部调整
+    auto Adjust = [parent, merge](INDEX_SIZE to, INDEX_SIZE from) {
+      bool toLeft = to < from;
+      INDEX_SIZE PBookPos =
+          toLeft ? to : from;  // 父节点中需要被借用的书的index
+      parent->children[to]->books.push_back(parent->books[PBookPos]);
+      // 1.直接借
+      if (parent->children[from]->books.size() == 2) {
+        INDEX_SIZE upside = toLeft ? 0 : 1;  // 将被上移的book的位置
+        parent->books[PBookPos] = parent->children[from]->books[upside];
+        parent->children[from]->books.erase(
+            parent->children[from]->books.begin() + upside);
+        // 移交子树
+        if (toLeft) {
+          parent->children[to]->children.push_back(
+              parent->children[from]->children.front());
+          parent->children[from]->children.erase(
+              parent->children[from]->children.begin());
+        } else {
+          parent->children[to]->children.insert(
+              parent->children[to]->children.begin(),
+              parent->children[from]->children.back());
+          parent->children[from]->children.pop_back();
         }
-        // 2.父节点借，需要merge
-        parent->books.erase(parent->books.begin() + PBookPos);
-        merge(PBookPos);  // 始终向左合并，以保证关键字升序
-        parent->children.erase(parent->children.begin() + PBookPos + 1);
-      };
-      switch (index) {
-        case (0):
-          Adjust(0, 1);
-          break;
-        case (1):
-          if (parent->children.size() == 3 &&
-              parent->children[2]->books.size() == 2)
-            Adjust(1, 2);
-          else {
-            Adjust(1, 0);
-          }
-          break;
-        case (2):
-          Adjust(2, 1);
       }
+      // 2.父节点借，需要merge
+      parent->books.erase(parent->books.begin() + PBookPos);
+      merge(PBookPos);  // 始终向左合并，以保证关键字升序
+      parent->children.erase(parent->children.begin() + PBookPos + 1);
+    };
+    switch (pos) {
+      case (0):
+        Adjust(0, 1);
+        break;
+      case (1):
+        if (parent->children.size() == 3 &&
+            parent->children[2]->books.size() == 2)
+          Adjust(1, 2);
+        else {
+          Adjust(1, 0);
+        }
+        break;
+      case (2):
+        Adjust(2, 1);
     }
-    BorrowNode = parent;  // 继续向上检查
-  } while (BorrowNode->books.empty());
+  }
+  if (parent->books.empty()) DisLess(parent);
 }

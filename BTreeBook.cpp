@@ -22,8 +22,16 @@ int main() {
                               17, 12, 45, 25, 42, 15, 90, 30, 7};
   for(auto it:bookIDs){
       myLibrary.AddBook(it);
+     // myLibrary.Display();
+  }
+  myLibrary.Display();
+  bookIDs = {45, 90, 50, 22, 42};
+  for(auto it:bookIDs){
+      myLibrary.DeleteBook(it);
       myLibrary.Display();
   }
+
+
 
   // 恢复原始的 std::cout 流
   std::cout.rdbuf(logStream.originalStreamBuf);

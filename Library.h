@@ -128,5 +128,5 @@ class Library {  // Singleton µ¥ÀýÄ£Ê½
   void DeleteBTree(std::shared_ptr<BTreeNode> node, const INDEX_SIZE& index);
   void Successor(std::shared_ptr<BTreeNode>& node, const INDEX_SIZE& index);
   void DisMore(std::shared_ptr<BTreeNode> ErrorNode);
-  void DisLess(std::shared_ptr<BTreeNode> ErrorNode, const INDEX_SIZE& index);
+  void DisLess(std::shared_ptr<BTreeNode> ErrorNode);
 };
