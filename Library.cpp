@@ -79,10 +79,9 @@ result Library::find(int bid) const {  // 查找书
       for (i = 0; i < curr->books.size(); i++) {
         if (curr->books[i] == bid) {
           return result(curr, i, true);  // 找到
-        } else if (
-            curr->books[i] >
-            bid) {  // 只要找到比bid大的书，就可以确定bid不
-            //在这个节点，而且只可能在curr->children[i]中
+        } else if (curr->books[i] >
+                   bid) {  // 只要找到比bid大的书，就可以确定bid不
+          // 在这个节点，而且只可能在curr->children[i]中
           parent = curr;
           curr = curr->children[i];
           flag = true;
@@ -102,13 +101,6 @@ result Library::find(int bid) const {  // 查找书
 }
 void Library::AddBook(const int bid, const int number) {
   result r = find(bid);
-  /*std::cout << r.node << std::endl
-              << r.index << std::endl
-              << r.tag << std::endl;
-  */
-  if (bid == 18) {
-    std::cout << "DEBUGING!";
-  }
   if (r.tag) {
     std::cout << "增加库存" << number << "本,"
               << "现总库存为" << (r.node->books[r.index] += number) << "本。";
@@ -148,17 +140,18 @@ bool Library::GiveBack(int bid, int rid) {  // 还书
 void Library::Display() {
   auto printNode = [](std::shared_ptr<BTreeNode> node, int depth) {
     for (int i = 0; i < depth; i++) std::cout << "  ";
-    for (int i = 0; i < node->books.size(); i++) {
+    for (int i = 0; i < node->books.size() - 1; i++) {
       std::cout << node->books[i].getBid() << ",";
     }
-    // DEBUGING
+    std::cout << node->books.back().getBid();
+    /*DEBUGING
     auto parent = node->parent.lock();
     if (parent != nullptr) {
-        std::cout<<"\tParent:";
+      std::cout << "\tParent:";
       for (int i = 0; i < parent->books.size(); i++) {
         std::cout << parent->books[i].getBid() << ",";
       }
-    }
+    }*/
 
     std::cout << std::endl;
   };
@@ -166,18 +159,23 @@ void Library::Display() {
 }
 bool Library::Borrow(int bid, int rid) {  // 这里返回类型可以为void
   result r = find(bid);
-  if (r.tag) {
+  if (!r.tag) {
     std::cout << "该书不存在。";
     return false;
   }
-  if (r.node->books[r.index].borrowBook(rid)) return true;
+  if (r.node->books[r.index].borrowBook(rid)) {
+    std::cout << "借书成功。";
+    return true;
+  }
   return false;
 }
 
 bool Library::DeleteBook(const int bid) {
   result r = find(bid);
+  std::cout << "删除" << bid << std::endl;
   if (!r.tag) return false;  // 没找到
   DeleteBTree(r.node, r.index);
+  std::cout << "删除成功" << std::endl << std::endl;
   return true;
 }
 
@@ -188,14 +186,15 @@ void Library::DeleteBTree(std::shared_ptr<BTreeNode> node,
     node->children.pop_back();  // 最下层节点的children都为空，删除任意一个
     if (node->books.empty()) DisLess(node);  // 调整B树的结构，使其满足B树的定义
   } else {
-    Successor(node, index + 1);
+    Successor(node, index);
     DeleteBTree(node, 0);
   }
 }
 void Library::Successor(std::shared_ptr<BTreeNode>& node,
                         const INDEX_SIZE& index) {
+  node->books[index] = node->children[index + 1]->books[0];
   node = node->children[index + 1];
-  if (node->children[0] != nullptr) Successor(node, 1);
+  if (node->children[0] != nullptr) Successor(node, 0);
 }
 void Library::DisMore(
     std::shared_ptr<BTreeNode> ErrorNode) {  // 调整B树的结构，使其满足B树的定义
@@ -246,6 +245,10 @@ void Library::DisMore(
 }
 void Library::DisLess(
     std::shared_ptr<BTreeNode> ErrorNode) {  // 调整B树的结构，使其满足B树的定义
+  if (ErrorNode->parent.lock() == nullptr) {  // 调整根
+    root = ErrorNode->children[0];
+    return;
+  }
   auto const parent = ErrorNode->parent.lock();
   INDEX_SIZE pos = 0;  // ErrorNode在父节点中的位置
   for (; pos < parent->children.size(); pos++) {
@@ -256,13 +259,17 @@ void Library::DisLess(
   } else {  // 非根节点,找到兄弟节点
     auto merge = [parent](INDEX_SIZE index) {
       parent->children[index]->books.insert(
-          parent->children[index]->books.begin(),
+          parent->children[index]->books.end(),
           parent->children[index + 1]->books.begin(),
           parent->children[index + 1]->books.end());
       parent->children[index]->children.insert(
-          parent->children[index]->children.begin(),
+          parent->children[index]->children.end(),
           parent->children[index + 1]->children.begin(),
           parent->children[index + 1]->children.end());
+      if (parent->children[index]->children[0] != nullptr)
+        for (int i = 0; i < parent->children[index]->children.size(); i++)
+          parent->children[index]->children[i]->parent =
+              parent->children[index];
     };
     // 局部调整
     auto Adjust = [parent, merge](INDEX_SIZE to, INDEX_SIZE from) {
@@ -282,17 +289,23 @@ void Library::DisLess(
               parent->children[from]->children.front());
           parent->children[from]->children.erase(
               parent->children[from]->children.begin());
+          if (parent->children[to]->children.back() != nullptr)
+            parent->children[to]->children.back()->parent =
+                parent->children[to];
         } else {
           parent->children[to]->children.insert(
               parent->children[to]->children.begin(),
               parent->children[from]->children.back());
           parent->children[from]->children.pop_back();
+          if (parent->children[to]->children.front() != nullptr)
+            parent->children[to]->children.front()->parent =
+                parent->children[to];
         }
+      } else {  // 2.从父节点借，需要merge
+        parent->books.erase(parent->books.begin() + PBookPos);
+        merge(PBookPos);  // 始终向左合并，以保证关键字升序
+        parent->children.erase(parent->children.begin() + PBookPos + 1);
       }
-      // 2.父节点借，需要merge
-      parent->books.erase(parent->books.begin() + PBookPos);
-      merge(PBookPos);  // 始终向左合并，以保证关键字升序
-      parent->children.erase(parent->children.begin() + PBookPos + 1);
     };
     switch (pos) {
       case (0):
