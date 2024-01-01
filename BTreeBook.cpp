@@ -1,23 +1,32 @@
-// BTreeBook.cpp : This file contains the 'main' function. Program execution begins and ends there.
+// BTreeBook.cpp : This file contains the 'main' function. Program execution
+// begins and ends there.
 //
 
+#include <fstream>
+
 #include "Library.h"
+#include "LogStream.h"
 
+int main() {
+  std::ofstream logFile("log.txt");  // 创建日志文件
 
-int main( int argc, char **argv )
-{
-    std::cout << "hello import module!" << std::endl;
+  // 创建自定义输出流并重定向到日志文件和 std::cout
+  LogStream logStream(logFile, std::cout.rdbuf());
+  std::cout.rdbuf(&logStream);
 
-    return 0;
+  // 输出内容，会同时写入到日志文件和终端
+  std::cout << "Hello, Log!" << std::endl;
+
+  Library& myLibrary = Library::getInstance();
+  std::vector<int> bookIDs = {35, 16, 18, 70, 5,  50, 22, 60, 13,
+                              17, 12, 45, 25, 42, 15, 90, 30, 7};
+  for(auto it:bookIDs){
+      myLibrary.AddBook(it);
+      myLibrary.Display();
+  }
+
+  // 恢复原始的 std::cout 流
+  std::cout.rdbuf(logStream.originalStreamBuf);
+
+  return 0;
 }
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file

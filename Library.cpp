@@ -1,259 +1,137 @@
 #include "Library.h"
 
-class BorrowRcd {  // 借阅记录
-                   // 每个记录为一次借书，每次只能借一本书
- public:
-  BorrowRcd(int id) : rid(id) {
-    deadline = std::chrono::system_clock::now() +
-               std::chrono::days(30);  // 借书期限为30天
-  }
-  void show() const {
-    std::time_t time = std::chrono::system_clock::to_time_t(deadline);
-    std::println("图书证号：{} ，应归还时间：{}", rid, time);  // 直接打印时间戳
-  }
-  bool isExpired() const {  // 是否过期
-    return deadline < std::chrono::system_clock::now();
-  }
-  int getRid() const { return rid; }
-
- private:
-  int rid;  // 图书证号
-  std::chrono::system_clock::time_point
-      deadline;  // 应归还时间,根据当前时间计算出来
-};
-
-class Book {
- public:
-  Book(int bid, int mount = 0, std::string title = "待补充",
-       std::string author = "待补充")  // 默认mount为0,需要用setMount添加
-      : bid(bid), title(title), author(author), mount(mount) {
-    std::cout << "正在添加新书,是否补充书籍信息？（y：是，n:否）" << std::endl;
-    char answer;
-    std::cin >> answer;
-    while (answer != 'y' || answer != 'n') {
-      std::cout << "请输入有效选项：";
-      std::cin >> answer;
-    }
-    if (answer == 'y') {
-      std::string title, author;
-      std::cout << "请补充书籍信息：" << std::endl << "书名：";
-      std::cin >> title;
-      std::cout << std::endl << "作者：";
-      std::cin >> author;
-      std::cout << std::endl << "书籍信息填写完成。" << std::endl;
-      this->title = title;
-      this->author = author;
-    }
-    std::cout << "新书创建完成：";
-    show();
-  }
-
-  int getBid() const { return bid; }
-
-  std::string getTitle() const { return title; }
-  std::string getAuthor() const { return author; }
-  int getMount() const { return mount; }
-
-  void setBid(int bid) { this->bid = bid; }
-  void setTitle(std::string title) { this->title = title; }
-  void setAuthor(std::string author) { this->author = author; }
-  void setMount(int mount) { this->mount = mount; }
-  void show() const {
-    std::cout << "书号：" << bid << " 书名：" << title << " 作者：" << author
-              << " 现存量：" << mount << std::endl;
-  }
-  bool Invalid() const {  // 是否无效
-    return (mount == 0 && rcd.empty());
-  }
-  bool operator==(const Book& book) const { return this->bid == book.bid; }
-  bool operator!=(const Book& book) const { return this->bid != book.bid; }
-  bool operator<(const Book& book) const { return this->bid < book.bid; }
-  bool operator>(const Book& book) const { return this->bid > book.bid; }
-
-  bool operator==(const int bid) const { return this->bid == bid; }
-  bool operator!=(const int bid) const { return this->bid != bid; }
-  bool operator<(const int bid) const { return this->bid < bid; }
-  bool operator>(const int bid) const { return this->bid > bid; }
-
-  int operator+=(const int number) { mount += number; }
-  int operator-=(const int number) { mount -= number; }
-
-  bool beConsistentwith(const Book& book) const {
-    return title == book.title && author == book.author;
-  }
-
-  // 重载输入运算符
-  friend std::istream& operator>>(std::istream& is, Book& book) {
-    std::cout << "请输入书号：";
-    is >> book.bid;
-    std::cout << "请输入书名：";
-    is >> book.title;
-    std::cout << "请输入作者：";
-    is >> book.author;
-    std::cout << "请输入现存量：";
-    is >> book.mount;
-    return is;
-  }
-  // 重载输出运算符
-  friend std::ostream& operator<<(std::ostream& os, const Book& book) {
-    os << "书号：" << book.bid << " 书名：" << book.title << " 作者："
-       << book.author << " 现存量：" << book.mount << std::endl;
-    return os;
-  }
-
- private:
-  int bid;             // 书号
-  std::string title;   // 书名
-  std::string author;  // 作者
-  int mount;           // 现存量
-  // 不记录总库存量，因为总库存量可以通过借阅记录和现存量计算得到
-  // 不记录借出量，因为借出量可以通过借阅记录计算得到
-  std::list<BorrowRcd> rcd;  // 借阅记录
-
- public:
-  void borrowBook(int rid) {  // 借书
-    if (mount > 0) {
-      mount--;
-      rcd.push_back(BorrowRcd(rid));
-      std::cout << "借书成功！" << std::endl;
-      rcd.back().show();
-    } else {
-      std::cout << "该书已经全部借出！" << std::endl;
+void Book::show() const {
+  std::cout << "书号：" << bid << " 书名：" << title << " 作者：" << author
+            << " 现存量：" << mount << std::endl;
+  // 打印出最早过期的记录
+  if (rcd.empty()) return;
+  auto Ercd = rcd.begin();
+  for (auto it = rcd.begin(); it != rcd.end(); it++) {
+    if (it->getDL() < Ercd->getDL()) {
+      Ercd = it;
     }
   }
-  bool returnBook(int rid) {  // 还书
-    for (auto it = rcd.begin(); it != rcd.end(); it++) {
-      if (it->getRid() == rid) {
-        rcd.erase(it);
-        mount++;
-        return true;
-      }
-    }
+  Ercd->show();
+}
+bool Book::borrowBook(int rid) {  // 借书
+  if (mount > 0) {
+    mount--;
+    rcd.push_back(BorrowRcd(rid));
+    std::cout << "借书成功！" << std::endl;
+    rcd.back().show();
+    return true;
+
+  } else {
+    std::cout << "该书已经全部借出！" << std::endl;
     return false;
   }
-};
-
-// 用std::tuple代替会更好吗?不，因为std::tuple计算借书期限比较麻烦
-
-using INDEX_SIZE = std::vector<std::shared_ptr<BTreeNode>>::
-    size_type;  // 结点的孩子数量类型,兼容书的数量类型,实际就是size_t
-struct BTreeNode {          // 2-3树（3阶B树）的节点
-  std::vector<Book> books;  // 书
-  std::vector<std::shared_ptr<BTreeNode>> children;  // 子节点
-  std::weak_ptr<BTreeNode>
-      parent;  // 父节点,weak_ptr不会增加引用计数，防止循环引用
-  BTreeNode(Book b) : books(1, b), children(2, nullptr) {}
-};
-class result {  // 查找结果
-  std::shared_ptr<BTreeNode>
-      node;  // 节点，如果找到，node为书所在的节点，否则为应该插入的位置；如果为nullptr，说明树为空
-  INDEX_SIZE index;  // 索引,如果找到，index为书的索引，否则为应该插入的位置；
-  bool tag;          // 是否找到
-  result(std::shared_ptr<BTreeNode> n, INDEX_SIZE i, bool t)
-      : node(n), index(i), tag(t) {}
-  friend class Library;  // Library可以访问result的构造函数
-};
-
-class Library {  // Singleton 单例模式
-
- public:
-  static Library& getInstance() {  // 获取实例
-    static Library instance;
-    return instance;
+}
+bool Book::returnBook(int rid) {  // 还书
+  for (auto it = rcd.begin(); it != rcd.end(); it++) {
+    if (it->getRid() == rid) {
+      rcd.erase(it);
+      mount++;
+      return true;
+    }
   }
+  return false;
+}
 
- private:
-  std::shared_ptr<BTreeNode> root;  // 根节点
+Book::Book(int bid, int mount, std::string title,
+           std::string author)  // 默认mount为0,需要用setMount添加
+    : bid(bid), title(title), author(author), mount(mount) {
+  std::cout << "正在添加新书,是否补充书籍信息？（y：是，n:否）" << std::endl;
 
-  Library() : root(nullptr) {}                  // 构造函数私有化
-  Library(const Library&) = delete;             // 禁止拷贝构造
-  Library& operator=(const Library&) = delete;  // 禁止赋值
-  ~Library() {                                  // 析构函数
+  char answer = 'n';
+
+  /* DEBUGING
+  std::cin >> answer;
+  while (answer != 'y' && answer != 'n') {
+    std::cout << "请输入有效选项：";
+    std::cin >> answer;
   }
-  result find(int bid) const;
+  */
 
-  bool insert(const int bid, const int number);
-  // 当且仅当书号相同但书的其他信息不同时插入失败，返回false
-  bool insert(Book&& b, int number);
-
-  bool GiveBack(int bid, int rid = 1);
-  bool DeleteBook(const int bid);
-  void DeleteBTree(std::shared_ptr<BTreeNode> node, const INDEX_SIZE& index);
-  void Successor(std::shared_ptr<BTreeNode>& node, const INDEX_SIZE& index);
-  void DisMore(std::shared_ptr<BTreeNode> ErrorNode, INDEX_SIZE index);
-  void DisLess(std::shared_ptr<BTreeNode> ErrorNode, INDEX_SIZE index);
-};
+  if (answer == 'y') {
+    std::string title, author;
+    std::cout << "请补充书籍信息：" << std::endl << "书名：";
+    std::cin >> title;
+    std::cout << std::endl << "作者：";
+    std::cin >> author;
+    std::cout << std::endl << "书籍信息填写完成。" << std::endl;
+    this->title = title;
+    this->author = author;
+  }
+  std::cout << "新书创建完成：";
+  show();
+}
 
 result Library::find(int bid) const {  // 查找书
   if (root == nullptr) {
     return result(nullptr, -1, false);  // 空树
   } else {
     std::shared_ptr<BTreeNode> curr = root;
+    std::shared_ptr<BTreeNode> parent = root;
+
+    INDEX_SIZE i = 0;
     while (curr != nullptr) {
-      INDEX_SIZE i = 0;
-      for (; i < curr->books.size(); i++) {
+      bool flag = false;
+      for (i = 0; i < curr->books.size(); i++) {
         if (curr->books[i] == bid) {
           return result(curr, i, true);  // 找到
         } else if (
             curr->books[i] >
             bid) {  // 只要找到比bid大的书，就可以确定bid不在这个节点，而且只可能在curr->children[i]中
+          parent = curr;
           curr = curr->children[i];
+          flag = true;
           break;
         }
       }
       // 此时curr可能已经变成了curr->children[i]。
-      // 但是如果i==curr->books.size()，则说明bid比
-      // curr->books中的所有书都大，所以只可能在curr->children[i+1]中
-      if (curr->children.empty()) {     // 叶子节点
-        return result(curr, i, false);  // 没找到
-      }
-      if (i == curr->books.size()) {
-        curr = curr->children[i + 1];
+      // 但是如果已经遍历了全部books，则说明bid比
+      // curr->books中的所有书都大，所以只可能在最后一个子树中
+      if (flag == false) {
+        parent = curr;
+        curr = curr->children.back();
       }
     }
+    return result(parent, i, false);  // 没找到
   }
 }
-bool Library::insert(const int bid, const int number) {
+void Library::AddBook(const int bid, const int number) {
   result r = find(bid);
+  /*std::cout << r.node << std::endl
+              << r.index << std::endl
+              << r.tag << std::endl;
+  */
+  if (bid == 18) {
+    
+    std::cout << "DEBUGING!";
+    }
   if (r.tag) {
     std::cout << "增加库存" << number << "本,"
               << "现总库存为" << (r.node->books[r.index] += number) << "本。";
-    return true;
   } else {
     Book b(bid, number);
-    if (r.node == nullptr) {  // 根节点为空，
+    if (root == nullptr) {                    // 根节点为空，则为空树
       root = std::make_shared<BTreeNode>(b);  // 新建根节点
-      return true;
-    } else {  // 在非空树插入新书
-           
+    } else {                                  // 在非空树插入新书
+      insert(std::move(b), r);
     }
   }
 }
 
-bool Library::insert(Book&& b, const int number) {
-  result r = find(b.getBid());
-  if (r.node == nullptr) {                  // 空树
-    root = std::make_shared<BTreeNode>(b);  // 根节点为空，新建根节点
-    root->books[0].setMount(number);        // 设置数量
-    return true;
-  } else if (r.tag) {  // 找到
-    if (b.beConsistentwith(
-            r.node->books[r.index])) {  // 书号相同，书的其他信息也相同
-      r.node->books[r.index] += number;  // 增加数量
-      return true;
-    } else {  // 书号相同，书的其他信息不同
-      return false;
-    }
-  } else {                                                     // 没找到
-    r.node->books.insert(r.node->books.begin() + r.index, b);  // 插入书
-    // 插入书后，可能导致节点中书的数量超过3，需要分裂节点
+void Library::insert(Book&& b, result& r) {
+  r.node->books.insert(r.node->books.begin() + r.index, b);  // 插入书
+  r.node->children.push_back(nullptr);
 
-    if (r.node->books.size() == 3) {
-      DisMore(r.node, r.index);  // 调整B树的结构，使其满足B树的定义
-    }
+  // 插入书后，可能导致节点中书的数量达到3，调整B树的结构
+  if (r.node->books.size() == 3) {
+    DisMore(r.node);
   }
 }
-bool Library::GiveBack(int bid, int rid = 1) {  // 还书
+bool Library::GiveBack(int bid, int rid) {  // 还书
   result r = find(bid);
   if (r.tag) {  // 找到
     if (r.node->books[r.index].returnBook(rid)) {
@@ -267,11 +145,30 @@ bool Library::GiveBack(int bid, int rid = 1) {  // 还书
   std::cout << "该书不存在，请输入正确的书号。" << std::endl;
   return false;
 }
+void Library::Display() {
+  auto printNode = [](std::shared_ptr<BTreeNode> node, int depth) {
+    for (int i = 0; i < depth; i++) std::cout << "  ";
+    for (int i = 0; i < node->books.size(); i++) {
+      std::cout << node->books[i].getBid() << ",";
+    }
+    std::cout << std::endl;
+  };
+  traverse(root, printNode, 0);
+}
 bool Library::DeleteBook(const int bid) {
   result r = find(bid);
   if (!r.tag) return false;  // 没找到
   DeleteBTree(r.node, r.index);
   return true;
+}
+bool Library::Borrow(int bid, int rid) {  // 这里返回类型可以为void
+  result r = find(bid);
+  if (r.tag) {
+    std::cout << "该书不存在。";
+    return false;
+  }
+  if (r.node->books[r.index].borrowBook(rid)) return true;
+  return false;
 }
 void Library::DeleteBTree(std::shared_ptr<BTreeNode> node,
                           const INDEX_SIZE& index) {
@@ -290,36 +187,54 @@ void Library::Successor(std::shared_ptr<BTreeNode>& node,
   node = node->children[index + 1];
   if (!node->children.empty()) Successor(node, 1);
 }
-void Library::DisMore(std::shared_ptr<BTreeNode> ErrorNode,
-                      INDEX_SIZE index) {  // 调整B树的结构，使其满足B树的定义
-  std::shared_ptr<BTreeNode> OverweightNode(ErrorNode);
+void Library::DisMore(
+    std::shared_ptr<BTreeNode> ErrorNode) {  // 调整B树的结构，使其满足B树的定义
+  // 分裂节点需要分裂关键字和移交子树
+  // 分裂关键字
   auto newNode = std::make_shared<BTreeNode>(
-      OverweightNode->books.back());  // 将最后一个书作为新节点的书
-  OverweightNode->books.pop_back();   // 删除最后一个书
-  auto parent = OverweightNode->parent.lock();  // 获取父节点
-  do {
+      ErrorNode->books.back());  // 将最后一个书作为新节点的书
+  ErrorNode->books.pop_back();
+  // 移交两棵子树
+  newNode->children[0] = ErrorNode->children[2];
+  newNode->children[1] = ErrorNode->children[3];
+  ErrorNode->children.pop_back();
+  ErrorNode->children.pop_back();
+
+    // 上移中间，需要获取父节点指针
+    auto parent = ErrorNode->parent.lock();
+
     if (parent == nullptr) {  // 根节点
       parent = std::make_shared<BTreeNode>(
-          OverweightNode->books.back());  // 将最后一个书作为新节点的书
-      OverweightNode->books.pop_back();  // 删除最后一个书
-      parent->children[0] = OverweightNode;
+          ErrorNode->books.back()); //构造根节点
+      ErrorNode->books.pop_back();  // 删除最后一个书
+
+      parent->children[0] = ErrorNode;
       parent->children[1] = newNode;
-      OverweightNode->parent = parent;
+      ErrorNode->parent = parent;
       newNode->parent = parent;
       root = parent;
-    } else {  // 非根节点
+
+    } else {               // 非根节点
+      INDEX_SIZE pos = 0;  // OverweightNode在父节点中的位置
+      for (; pos < parent->children.size(); pos++) {
+        if (parent->children[pos] == ErrorNode) break;
+      }
+      
       parent->books.insert(
-          parent->books.begin() + index,
-          OverweightNode->books.back());  // 将最后一个书插入父节点
-      OverweightNode->books.pop_back();   // 删除最后一个书
-      parent->children.insert(parent->children.begin() + index + 1,
-                              newNode);  // 将新节点插入父节点
+          parent->books.begin() + pos,
+          ErrorNode->books.back());  // 将最后一个书插入父节点
+      ErrorNode->books.pop_back();   // 删除最后一个书
+      parent->children.insert(parent->children.begin() + pos + 1,
+                              newNode);  // 将新节点移交父节点
+      newNode->parent = parent;
     }
-    OverweightNode = parent;  // 继续向上分裂
-  } while (OverweightNode->books.size() == 3);
+    
+    if(parent->books.size()==3)DisMore(parent);
+  
 }
-void Library::DisLess(std::shared_ptr<BTreeNode> ErrorNode,
-                      INDEX_SIZE index) {  // 调整B树的结构，使其满足B树的定义
+void Library::DisLess(
+    std::shared_ptr<BTreeNode> ErrorNode,
+    const INDEX_SIZE& index) {  // 调整B树的结构，使其满足B树的定义
   std::shared_ptr<BTreeNode> BorrowNode(ErrorNode);  // 需要借书的节点
   do {
     auto const parent = ErrorNode->parent.lock();  // 获取父节点
