@@ -106,9 +106,8 @@ void Library::AddBook(const int bid, const int number) {
               << r.tag << std::endl;
   */
   if (bid == 18) {
-    
     std::cout << "DEBUGING!";
-    }
+  }
   if (r.tag) {
     std::cout << "增加库存" << number << "本,"
               << "现总库存为" << (r.node->books[r.index] += number) << "本。";
@@ -195,42 +194,43 @@ void Library::DisMore(
       ErrorNode->books.back());  // 将最后一个书作为新节点的书
   ErrorNode->books.pop_back();
   // 移交两棵子树
-  newNode->children[0] = ErrorNode->children[2];
-  newNode->children[1] = ErrorNode->children[3];
+  if (ErrorNode->children[2] != nullptr) {
+    newNode->children[0] = ErrorNode->children[2];
+    newNode->children[0]->parent = newNode;
+    newNode->children[1] = ErrorNode->children[3];
+    newNode->children[1]->parent = newNode;
+  }
   ErrorNode->children.pop_back();
   ErrorNode->children.pop_back();
 
-    // 上移中间，需要获取父节点指针
-    auto parent = ErrorNode->parent.lock();
+  // 上移中间，需要获取父节点指针
+  auto parent = ErrorNode->parent.lock();
 
-    if (parent == nullptr) {  // 根节点
-      parent = std::make_shared<BTreeNode>(
-          ErrorNode->books.back()); //构造根节点
-      ErrorNode->books.pop_back();  // 删除最后一个书
+  if (parent == nullptr) {                                          // 根节点
+    parent = std::make_shared<BTreeNode>(ErrorNode->books.back());  // 构造根节点
+    ErrorNode->books.pop_back();  // 删除最后一个书
 
-      parent->children[0] = ErrorNode;
-      parent->children[1] = newNode;
-      ErrorNode->parent = parent;
-      newNode->parent = parent;
-      root = parent;
+    parent->children[0] = ErrorNode;
+    parent->children[1] = newNode;
+    ErrorNode->parent = parent;
+    newNode->parent = parent;
+    root = parent;
 
-    } else {               // 非根节点
-      INDEX_SIZE pos = 0;  // OverweightNode在父节点中的位置
-      for (; pos < parent->children.size(); pos++) {
-        if (parent->children[pos] == ErrorNode) break;
-      }
-      
-      parent->books.insert(
-          parent->books.begin() + pos,
-          ErrorNode->books.back());  // 将最后一个书插入父节点
-      ErrorNode->books.pop_back();   // 删除最后一个书
-      parent->children.insert(parent->children.begin() + pos + 1,
-                              newNode);  // 将新节点移交父节点
-      newNode->parent = parent;
+  } else {               // 非根节点
+    INDEX_SIZE pos = 0;  // OverweightNode在父节点中的位置
+    for (; pos < parent->children.size(); pos++) {
+      if (parent->children[pos] == ErrorNode) break;
     }
-    
-    if(parent->books.size()==3)DisMore(parent);
-  
+
+    parent->books.insert(parent->books.begin() + pos,
+                         ErrorNode->books.back());  // 将最后一个书插入父节点
+    ErrorNode->books.pop_back();                    // 删除最后一个书
+    parent->children.insert(parent->children.begin() + pos + 1,
+                            newNode);  // 将新节点移交父节点
+    newNode->parent = parent;
+  }
+
+  if (parent->books.size() == 3) DisMore(parent);
 }
 void Library::DisLess(
     std::shared_ptr<BTreeNode> ErrorNode,
