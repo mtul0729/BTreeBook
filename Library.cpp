@@ -40,28 +40,6 @@ bool Book::returnBook(int rid) {  // 还书
 Book::Book(int bid, int mount, std::string title,
            std::string author)  // 默认mount为0,需要用setMount添加
     : bid(bid), title(title), author(author), mount(mount) {
-  std::cout << "正在添加新书,是否补充书籍信息？（y：是，n:否）" << std::endl;
-
-  char answer = 'n';
-
-  /* DEBUGING
-  std::cin >> answer;
-  while (answer != 'y' && answer != 'n') {
-    std::cout << "请输入有效选项：";
-    std::cin >> answer;
-  }
-  */
-
-  if (answer == 'y') {
-    std::string title, author;
-    std::cout << "请补充书籍信息：" << std::endl << "书名：";
-    std::cin >> title;
-    std::cout << std::endl << "作者：";
-    std::cin >> author;
-    std::cout << std::endl << "书籍信息填写完成。" << std::endl;
-    this->title = title;
-    this->author = author;
-  }
   std::cout << "新书创建完成：";
   show();
 }
@@ -99,19 +77,24 @@ result Library::find(int bid) const {  // 查找书
     return result(parent, i, false);  // 没找到
   }
 }
-void Library::AddBook(const int bid, const int number) {
+void Library::AddBook(const int bid, const int number, std::string title,
+                      std::string author) {
   result r = find(bid);
   if (r.tag) {
     std::cout << "增加库存" << number << "本,"
-              << "现总库存为" << (r.node->books[r.index] += number) << "本。";
+              << "现总库存为" << (r.node->books[r.index] += number) << "本。"<<std::endl;
   } else {
-    Book b(bid, number);
+    Book b(bid, number,title,author);
     if (root == nullptr) {                    // 根节点为空，则为空树
       root = std::make_shared<BTreeNode>(b);  // 新建根节点
     } else {                                  // 在非空树插入新书
       insert(std::move(b), r);
     }
   }
+}
+
+void Library::AddBook(std::tuple<int, std::string, std::string> b) {
+    AddBook(std::get<0>(b), 10, std::get<1>(b), std::get<2>(b));
 }
 
 void Library::insert(Book&& b, result& r) {
@@ -156,6 +139,14 @@ void Library::Display() {
     std::cout << std::endl;
   };
   traverse(root, printNode, 0);
+}
+void Library::showBook(int bid) const {
+  result r = find(bid);
+  if (r.tag) {
+    r.node->books[r.index].show();
+  } else {
+    std::cout << "该书不存在。" << std::endl;
+  }
 }
 bool Library::Borrow(int bid, int rid) {  // 这里返回类型可以为void
   result r = find(bid);

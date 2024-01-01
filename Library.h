@@ -17,7 +17,9 @@ class BorrowRcd {  // 借阅记录
   }
   void show() const {
     std::time_t time = std::chrono::system_clock::to_time_t(deadline);
-    std::println("图书证号：{} ，应归还时间：{}", rid, time);  // 直接打印时间戳
+    std::print("图书证号：{} ，应归还时间：{}", rid, time);  // 直接打印时间戳
+    if(isExpired()) std::print(" 已过期");
+    std::cout << std::endl;
   }
   bool isExpired() const {  // 是否过期
     return deadline < std::chrono::system_clock::now();
@@ -33,11 +35,8 @@ class BorrowRcd {  // 借阅记录
 class Book {
  public:
   Book(int bid, int mount = 0, std::string title = "待补充",
-       std::string author = "待补充")  // 默认mount为0,需要用setMount添加
-      ;
-
+       std::string author = "待补充");  // 默认mount为0,需要用setMount添加
   int getBid() const { return bid; }
-
   std::string getTitle() const { return title; }
   std::string getAuthor() const { return author; }
   int getMount() const { return mount; }
@@ -98,13 +97,17 @@ class Library {  // Singleton 单例模式
     static Library instance;
     return instance;
   }
-  void AddBook(const int bid, const int number = 10);  // 加入新书或增加库存
+  void AddBook(const int bid, const int number = 10 , std::string title = "待补充",
+       std::string author = "待补充");  // 加入新书或增加库存
+  void AddBook(std::tuple<int, std::string, std::string>);  // 加入新书或增加库存
   bool DeleteBook(const int bid);                      // 清空该书
   bool Borrow(int bid, int rid = 1);                   // 借书
   bool GiveBack(int bid, int rid = 1);                 // 还书
   void Display();  // 以凹入表的形式显示
-                   // void ListbyAuthor(std::string);
+  void showBook(int bid) const;
+  
   //  TODO:列出某著者全部著作名,可能需要用额外的类记录
+  // void ListbyAuthor(std::string);
  private:
   std::shared_ptr<BTreeNode> root;  // 根节点
 
@@ -115,16 +118,16 @@ class Library {  // Singleton 单例模式
   }
   result find(int bid) const;
   void traverse(std::shared_ptr<BTreeNode> node,
-                void (*visit)(std::shared_ptr<BTreeNode>,int), int depth = 0) const {
-    visit(node,depth);
-    
+                void (*visit)(std::shared_ptr<BTreeNode>, int),
+                int depth = 0) const {
+    visit(node, depth);
     for (auto& it : node->children) {
-        if(it==nullptr)return;
-        traverse(it, visit,depth+1);}
+      if (it == nullptr) return;
+      traverse(it, visit, depth + 1);
+    }
   }
   // 当且仅当书号相同但书的其他信息不同时插入失败，返回false
   void insert(Book&& b, result& r);
-
   void DeleteBTree(std::shared_ptr<BTreeNode> node, const INDEX_SIZE& index);
   void Successor(std::shared_ptr<BTreeNode>& node, const INDEX_SIZE& index);
   void DisMore(std::shared_ptr<BTreeNode> ErrorNode);
