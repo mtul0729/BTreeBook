@@ -221,19 +221,27 @@ class Library {  // Singleton 单例模式
     // 该书号对应的书不存在
     return false;
   }
-  bool DeleteBook(int bid) {
+  bool DeleteBook(const int bid) {
     result r = find(bid);
-    if (!r.tag) return false;                                // 没找到
-    if (r.node->children.empty()) {                          // 终端节点
-      r.node->books.erase(r.node->books.begin() + r.index);  // 删除书
-      r.node->children.erase(r.node->children.begin() + r.index +
-                             1);  // 删除孩子
-      if (r.node->books.empty())
-        DisLess(r.node, r.index);  // 调整B树的结构，使其满足B树的定义
-    } else {                       // 非终端节点
+    if (!r.tag) return false;  // 没找到
+    DeleteBTree(r.node, r.index);
+    return true;
+  }
+  void DeleteBTree(std::shared_ptr<BTreeNode> node, const INDEX_SIZE& index) {
+    if (node->children.empty()) {
+      node->books.erase(node->books.begin() + index);            // 删除书
+      node->children.erase(node->children.begin() + index + 1);  // 删除孩子
+      if (node->books.empty())
+        DisLess(node, index);  // 调整B树的结构，使其满足B树的定义
+    } else {
+      Successor(node, index + 1);
+      DeleteBTree(node, 0);
     }
   }
-
+  void Successor(std::shared_ptr<BTreeNode>& node, const INDEX_SIZE& index) {
+    node = node->children[index + 1];
+    if (!node->children.empty()) Successor(node, 1);
+  }
   void DisMore(std::shared_ptr<BTreeNode> ErrorNode,
                INDEX_SIZE index) {  // 调整B树的结构，使其满足B树的定义
     std::shared_ptr<BTreeNode> OverweightNode(ErrorNode);
@@ -267,9 +275,8 @@ class Library {  // Singleton 单例模式
     std::shared_ptr<BTreeNode> BorrowNode(ErrorNode);  // 需要借书的节点
     do {
       auto const parent = ErrorNode->parent.lock();  // 获取父节点
-      if (parent ==
-          nullptr) {  // 根节点，且根节点已经没有书了
-        //调整根结点
+      if (parent == nullptr) {  // 根节点已经没有书了
+        root = BorrowNode;
       } else {  // 非根节点,找到兄弟节点
         auto merge = [parent](INDEX_SIZE index) {
           parent->children[index]->books.insert(
@@ -323,7 +330,8 @@ class Library {  // Singleton 单例模式
               Adjust(1, 2);
             else {
               Adjust(1, 0);
-            }break;
+            }
+            break;
           case (2):
             Adjust(2, 1);
         }
