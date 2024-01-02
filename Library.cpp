@@ -37,8 +37,7 @@ bool Book::returnBook(int rid) {  // 还书
   return false;
 }
 
-Book::Book(int bid, int mount, std::string title,
-           std::string author)  
+Book::Book(int bid, int mount, std::string title, std::string author)
     : bid(bid), title(title), author(author), mount(mount) {
   std::cout << "新书创建完成：";
   show();
@@ -83,8 +82,8 @@ void Library::AddBook(const int bid, const int number, std::string title,
   if (r.tag) {
     std::cout << "增加库存" << number << "本,"
               << "现总库存为" << (r.node->books[r.index] += number) << "本。";
-    if(bid==16){
-    std::cout<<"调试"<<std::endl;
+    if (bid == 16) {
+      std::cout << "调试" << std::endl;
     }
   } else {
     Book b(bid, number, title, author);
@@ -126,7 +125,7 @@ bool Library::GiveBack(int bid, int rid) {  // 还书
   return false;
 }
 void Library::Display() {  // 以凹入表的形式显示
-    std::cout<< "当前B树结构：" << std::endl;
+  std::cout << "当前B树结构：" << std::endl;
   auto printNode = [](std::shared_ptr<BTreeNode> node, int depth) {
     for (int i = 0; i < depth; i++) std::cout << "  ";
     for (int i = 0; i < node->books.size() - 1; i++) {
@@ -160,7 +159,7 @@ void Library::Borrow(int bid, int rid) {  // 这里返回类型可以为void
   } else if (r.node->books[r.index].borrowBook(rid)) {
     std::cout << "借书成功。";
   } else {
-	std::cout << "该书已经全部借出。";
+    std::cout << "该书已经全部借出。";
   }
 }
 
@@ -278,22 +277,22 @@ void Library::DisLess(
         parent->children[from]->books.erase(
             parent->children[from]->books.begin() + upside);
         // 移交子树
-        if (toLeft) {
+        if (parent->children[from]->children[upside] ==
+            nullptr) {  // 如果是最下层节点，改变children的大小
+          parent->children[to]->children.push_back(nullptr);
+          parent->children[from]->children.pop_back();
+        } else if (toLeft) {  // 否则移交，同时改变子树的父节点
           parent->children[to]->children.push_back(
               parent->children[from]->children.front());
           parent->children[from]->children.erase(
               parent->children[from]->children.begin());
-          if (parent->children[to]->children.back() != nullptr)
-            parent->children[to]->children.back()->parent =
-                parent->children[to];
+          parent->children[to]->children.back()->parent = parent->children[to];
         } else {
           parent->children[to]->children.insert(
               parent->children[to]->children.begin(),
               parent->children[from]->children.back());
           parent->children[from]->children.pop_back();
-          if (parent->children[to]->children.front() != nullptr)
-            parent->children[to]->children.front()->parent =
-                parent->children[to];
+          parent->children[to]->children.front()->parent = parent->children[to];
         }
       } else {  // 2.从父节点借，需要merge
         parent->books.erase(parent->books.begin() + PBookPos);

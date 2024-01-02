@@ -101,7 +101,7 @@ class Library {  // Singleton 单例模式,只允许构造一个实例
     }
   }
   // 当且仅当书号相同但书的其他信息不同时插入失败，返回false
-  void insert(Book&& b, result& r);  //
+  void insert(Book&& b, result& r);  
   void DeleteBTree(std::shared_ptr<BTreeNode> node, const INDEX_SIZE& index);
   void Successor(std::shared_ptr<BTreeNode>& node, const INDEX_SIZE& index);
   void DisMore(std::shared_ptr<BTreeNode> ErrorNode);
