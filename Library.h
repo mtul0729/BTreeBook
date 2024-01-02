@@ -91,7 +91,7 @@ class Library {  // Singleton 单例模式,只允许构造一个实例
   Library& operator=(const Library&) = delete;  // 禁止赋值
   ~Library() {}
   result find(int bid) const;
-  void traverse(std::shared_ptr<BTreeNode> node,
+  void traverse(std::shared_ptr<BTreeNode> node, //记录深度的遍历
                 void (*visit)(std::shared_ptr<BTreeNode>, int),
                 int depth = 0) const {
     visit(node, depth);

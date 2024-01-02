@@ -43,7 +43,7 @@ int main() {
             << "0：退出" << std::endl;
   int option = 0;
   while (1) {
-    std::cout << "请输入操作的对应编号(默认为0):";
+    std::cout << "请输入操作的对应编号:";
     std::cin >> option;
     switch (option) {
       case 1: {
