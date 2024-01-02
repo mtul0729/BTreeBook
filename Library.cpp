@@ -1,8 +1,8 @@
 #include "Library.h"
 
 void Book::show() const {
-  std::cout << "书号：" << bid << " 书名：" << title << " 作者：" << author
-            << " 现存量：" << mount << std::endl;
+  std::cout << "书号：" << bid << "\t书名：" << title << "\t作者：" << author
+            << "\t现存量：" << mount << std::endl;
   // 打印出最早过期的记录
   if (rcd.empty()) return;
   auto Ercd = rcd.begin();
@@ -38,7 +38,7 @@ bool Book::returnBook(int rid) {  // 还书
 }
 
 Book::Book(int bid, int mount, std::string title,
-           std::string author)  // 默认mount为0,需要用setMount添加
+           std::string author)  
     : bid(bid), title(title), author(author), mount(mount) {
   std::cout << "新书创建完成：";
   show();
@@ -82,9 +82,12 @@ void Library::AddBook(const int bid, const int number, std::string title,
   result r = find(bid);
   if (r.tag) {
     std::cout << "增加库存" << number << "本,"
-              << "现总库存为" << (r.node->books[r.index] += number) << "本。"<<std::endl;
+              << "现总库存为" << (r.node->books[r.index] += number) << "本。";
+    if(bid==16){
+    std::cout<<"调试"<<std::endl;
+    }
   } else {
-    Book b(bid, number,title,author);
+    Book b(bid, number, title, author);
     if (root == nullptr) {                    // 根节点为空，则为空树
       root = std::make_shared<BTreeNode>(b);  // 新建根节点
     } else {                                  // 在非空树插入新书
@@ -94,10 +97,11 @@ void Library::AddBook(const int bid, const int number, std::string title,
 }
 
 void Library::AddBook(std::tuple<int, std::string, std::string> b) {
-    AddBook(std::get<0>(b), 10, std::get<1>(b), std::get<2>(b));
+  AddBook(std::get<0>(b), 10, std::get<1>(b), std::get<2>(b));
 }
 
-void Library::insert(Book&& b, result& r) {
+void Library::insert(Book&& b, result& r) {  // 当且仅当书号相同
+  // 但书的其他信息不同时插入失败，返回false
   r.node->books.insert(r.node->books.begin() + r.index, b);  // 插入书
   r.node->children.push_back(nullptr);
 
@@ -110,24 +114,26 @@ bool Library::GiveBack(int bid, int rid) {  // 还书
   result r = find(bid);
   if (r.tag) {  // 找到
     if (r.node->books[r.index].returnBook(rid)) {
-      r.node->books[r.index] += 1;
+      std::cout << "还书成功。" << std::endl;
       return true;
     } else {
       std::cout << "您没有借过此书。" << std::endl;
+      return false;
     }
   }
   // 该书号对应的书不存在
   std::cout << "该书不存在，请输入正确的书号。" << std::endl;
   return false;
 }
-void Library::Display() {
+void Library::Display() {  // 以凹入表的形式显示
+    std::cout<< "当前B树结构：" << std::endl;
   auto printNode = [](std::shared_ptr<BTreeNode> node, int depth) {
     for (int i = 0; i < depth; i++) std::cout << "  ";
     for (int i = 0; i < node->books.size() - 1; i++) {
       std::cout << node->books[i].getBid() << ",";
     }
     std::cout << node->books.back().getBid();
-    /*DEBUGING
+    /*DEBUG ，打印父节点
     auto parent = node->parent.lock();
     if (parent != nullptr) {
       std::cout << "\tParent:";
@@ -135,7 +141,6 @@ void Library::Display() {
         std::cout << parent->books[i].getBid() << ",";
       }
     }*/
-
     std::cout << std::endl;
   };
   traverse(root, printNode, 0);
@@ -148,17 +153,15 @@ void Library::showBook(int bid) const {
     std::cout << "该书不存在。" << std::endl;
   }
 }
-bool Library::Borrow(int bid, int rid) {  // 这里返回类型可以为void
+void Library::Borrow(int bid, int rid) {  // 这里返回类型可以为void
   result r = find(bid);
   if (!r.tag) {
     std::cout << "该书不存在。";
-    return false;
-  }
-  if (r.node->books[r.index].borrowBook(rid)) {
+  } else if (r.node->books[r.index].borrowBook(rid)) {
     std::cout << "借书成功。";
-    return true;
+  } else {
+	std::cout << "该书已经全部借出。";
   }
-  return false;
 }
 
 bool Library::DeleteBook(const int bid) {
