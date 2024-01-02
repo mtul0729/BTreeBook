@@ -122,6 +122,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -133,11 +134,9 @@
   <ItemGroup>
     <ClCompile Include="BTreeBook.cpp" />
     <ClCompile Include="Library.cpp" />
-    <ClCompile Include="LogStream.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Library.h" />
-    <ClInclude Include="LogStream.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
