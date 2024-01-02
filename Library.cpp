@@ -75,7 +75,7 @@ result Library::find(int bid) const {  // 查找书
     }
     // curr为nullptr，说明parent为最下层节点
     // 返回应该插入的位置
-    return result(parent, i, false);  
+    return result(parent, i, false);
   }
 }
 void Library::AddBook(const int bid, const int number, std::string title,
