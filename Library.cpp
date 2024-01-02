@@ -44,6 +44,7 @@ Book::Book(int bid, int mount, std::string title, std::string author)
 }
 
 result Library::find(int bid) const {  // 查找书
+  // 返回值为一个结构体，包含了查找结果的信息
   if (root == nullptr) {
     return result(nullptr, -1, false);  // 空树
   } else {
@@ -54,26 +55,27 @@ result Library::find(int bid) const {  // 查找书
     while (curr != nullptr) {
       bool flag = false;
       for (i = 0; i < curr->books.size(); i++) {
+        // 书号相同，找到
         if (curr->books[i] == bid) {
-          return result(curr, i, true);  // 找到
-        } else if (curr->books[i] >
-                   bid) {  // 只要找到比bid大的书，就可以确定bid不
-          // 在这个节点，而且只可能在curr->children[i]中
+          return result(curr, i, true);     // 找到
+        } else if (curr->books[i] > bid) {  // 找到比bid大的书
+          // 若curr为最下层节点，则i为应该插入的位置
           parent = curr;
           curr = curr->children[i];
           flag = true;
           break;
         }
       }
-      // 此时curr可能已经变成了curr->children[i]。
-      // 但是如果已经遍历了全部books，则说明bid比
-      // curr->books中的所有书都大，所以只可能在最后一个子树中
+
       if (flag == false) {
+        // bid大于curr中的所有书，查找最后一个子树
         parent = curr;
         curr = curr->children.back();
       }
     }
-    return result(parent, i, false);  // 没找到
+    // curr为nullptr，说明parent为最下层节点
+    // 返回应该插入的位置
+    return result(parent, i, false);  
   }
 }
 void Library::AddBook(const int bid, const int number, std::string title,
@@ -197,7 +199,7 @@ void Library::DisMore(
       ErrorNode->books.back());  // 将最后一个书作为新节点的书
   ErrorNode->books.pop_back();
   // 移交两棵子树
-  if (ErrorNode->children[2] != nullptr) {
+  if (ErrorNode->children[2] != nullptr) {  // 非最下层节点
     newNode->children[0] = ErrorNode->children[2];
     newNode->children[0]->parent = newNode;
     newNode->children[1] = ErrorNode->children[3];
@@ -206,8 +208,7 @@ void Library::DisMore(
   ErrorNode->children.pop_back();
   ErrorNode->children.pop_back();
 
-  // 上移中间，需要获取父节点指针
-  auto parent = ErrorNode->parent.lock();
+  auto parent = ErrorNode->parent.lock();  // 获取父节点指针
 
   if (parent == nullptr) {  // 根节点
     parent =
